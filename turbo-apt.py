@@ -40,12 +40,9 @@ class EtuoviApt:
         return string
        
 def getDistance(origin, destination, mode="driving"):
-    time_of_travel = next_weekday(datetime.datetime.now(), 0, 8, 30).timestamp()
-    # url = "https://maps.googleapis.com/maps/api/distancematrix/json?" \
-    #     "origins={0}&destinations={1}&mode={2}&language=en-EN&sensor=false&key={3}" \
-    #     .format(urlencode(origin, quote_via=quote_plus), 
-    #             urlencode(destination, quote_via=quote_plus), mode, _g_api_key)
+    time_of_travel = int(next_weekday(datetime.datetime.now(), 0, 8, 30).timestamp())
     data = {"origins": origin,
+            "departure_time": time_of_travel,
             "destinations": destination,
             "mode": mode,
             "language": "en-EN",
