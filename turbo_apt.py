@@ -22,7 +22,7 @@ class EtuoviApt:
         self.url = url
         if self.load():
             #The URL was already found from file.
-
+            pass
         else:
             #This is a new URL. Fetch data and save to file.
             with urllib.request.urlopen(url) as response:
@@ -55,11 +55,11 @@ class EtuoviApt:
         string += "Commute estimates are based on the next monday at 8.30"
         return string
 
-    def save():
+    def save(self):
         """TODO: Saves the object to JSON file."""
         return
 
-    def load():
+    def load(self):
         """TODO: Loads an object from JSON file.
         
         Returns:
@@ -77,7 +77,6 @@ def getDistance(origin, destination, mode="driving"):
            }
     url = "https://maps.googleapis.com/maps/api/distancematrix/json?" + urlencode(data)
     
-    #print(url)
     try:
         result = simplejson.load(urllib.request.urlopen(url))
     except Exception as e:
@@ -85,12 +84,13 @@ def getDistance(origin, destination, mode="driving"):
         raise e
     try:
         travel_time = result['rows'][0]['elements'][0]['duration']['text']
-        distance = result['rows'][0]['elements'][0]['distance']['text']
+        friendly_distance = result['rows'][0]['elements'][0]['distance']['text']
+        distance = result['rows'][0]['elements'][0]['distance']['value']
     except Exception as e:
         print(result)
         raise e
         
-    return distance, travel_time
+    return friendly_distance, travel_time, distance
 
 def next_weekday(d, weekday, hour, minute):
     """Returns the next weekday datetime at time_of_day"""
@@ -99,7 +99,3 @@ def next_weekday(d, weekday, hour, minute):
         days_ahead += 7
     date = d + datetime.timedelta(days_ahead)
     return datetime.datetime(date.year, date.month, date.day, hour, minute)
-    
-
-apt = EtuoviApt("https://www.etuovi.com/kohde/9449326")
-print(apt)
