@@ -8,7 +8,8 @@ _g_jsonfile = "test.json"
 _g_test_urls = ["https://www.etuovi.com/kohde/620468", "https://www.etuovi.com/kohde/9988654"]
 class TurboTestCase(unittest.TestCase):
     def setUp(self):
-        pass
+        if os.path.exists(_g_jsonfile):
+            os.unlink(_g_jsonfile)
     def tearDown(self):
         pass
     def testAddAptAndPrint(self):
@@ -26,7 +27,6 @@ class TurboTestCase(unittest.TestCase):
             assert os.path.exists(_g_jsonfile), "File not found! {}".format(_g_jsonfile)
             with open(_g_jsonfile, "r", encoding="utf-8") as fp:
                 file_list = json.load(fp)
-                pprint.pprint(file_list)
             
             found = True
             for obj in file_list:
@@ -35,8 +35,6 @@ class TurboTestCase(unittest.TestCase):
                     assert apt.address == obj["address"], \
                         "Address incorrect! Got {}, expected {}".format(apt.address, obj["address"])
             assert found, "Apartment missing from json file! ({})\n{}".format(apt.address, file_list)
-        if os.path.exists(_g_jsonfile):
-            os.unlink(_g_jsonfile)
         apt0 = turbo_apt.EtuoviApt(_g_test_urls[0], json_file=_g_jsonfile)
         checkFile(apt0)
         apt1 = turbo_apt.EtuoviApt(_g_test_urls[1], json_file=_g_jsonfile)
