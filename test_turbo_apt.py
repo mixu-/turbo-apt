@@ -46,3 +46,12 @@ class TurboTestCase(unittest.TestCase):
         assert apt2.last_updated == apt0.last_updated, \
             "Apt load() failed (timestamp has changed) " \
                 + str(apt2.last_updated) + " != " + str(apt0.last_updated)
+
+    def testCustomProperties(self):
+        """Custom properties can be added and printed."""
+        apt = turbo_apt.EtuoviApt(_g_test_urls[0])
+        value = "Some Value!"
+        setattr(apt, "some_custom_property", value)
+        assert apt.some_custom_property == value, "Custom property not set"
+        assert value in str(apt), "Custom property is not in object string representation."
+        print(apt)

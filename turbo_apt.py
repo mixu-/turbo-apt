@@ -32,6 +32,7 @@ class EtuoviApt:
         self._soup = None
         self.last_updated = 0
         self.address = ""
+        self.floor = (0, 0)
         self.price_total = 0
         self.price_debt = 0
         self.price_selling = 0
@@ -88,8 +89,6 @@ class EtuoviApt:
         if match:
             self.expense_maint = float(match.group(1).replace(",", "."))
             self.expense_debt = float(match.group(2).replace(",", "."))
-       
-
         
     def __str__(self):
         string = "\n***************************\n" + self.address + "\n"
@@ -102,7 +101,14 @@ class EtuoviApt:
             string += "%s is %s (%s by car, %s by bus)" \
                 %(commute["name"], trips["car"][0],
                   trips["car"][1], trips["bus"][1]) + "\n"
-        string += "Commute estimates are based on the next monday at 8.30"
+        string += "Commute estimates are based on the next monday at 8.30\n"
+        string += "\nOther information:\n"
+        already_printed = ["address", "price_debt", "price_selling", "price_total",
+                           "expense_maint", "expense_debt", "floor", "commute_times",
+                           "floor_raw", "_soup", "_html", "last_updated"]
+        for key, value in self.__dict__.items():
+            if key not in already_printed and not key.startswith("_"):
+                string += "%s: %s\n" %(key, value, )
         return string
 
     def save(self, filepath):
