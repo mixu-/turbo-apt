@@ -5,24 +5,19 @@ from urllib.parse import urlencode, quote_plus
 import time
 import datetime
 import json
+import pprint
 import re
 from json import JSONEncoder, JSONDecoder
 from bs4 import BeautifulSoup
 import simplejson
+import googlemaps
 
 _g_addresses = []
 
-_g_api_key = None
+maps = None
 
 def log(msg, level="info"):
-    print(msg)
-
-with open("../personal.json", encoding='utf-8') as f:
-   data = json.load(f)
-   _g_addresses = data["addresses"]
-   #log(_g_addresses)
-   _g_api_key = data["google_api_key"]
-
+    print(level + ": " + str(msg))
 
 class EtuoviApt:
     def __init__(self, url, json_file="turbo_apt.json"):
@@ -48,11 +43,13 @@ class EtuoviApt:
             self._soup = BeautifulSoup(self._html, 'html.parser')
             #Address of interest
             self.scrape()
+            coords = map_helper.get_coords(self.address)
+            self.coords = (coords["lat"], coords["lng"])
             self.last_updated = time.time()
             for address in _g_addresses:
                 trips = {
-                    "car": getDistance(self.address, address["address"], "driving"), 
-                    "bus": getDistance(self.address, address["address"], "transit")
+                    "car": map_helper.get_distance(self.address, address["address"], "driving"), 
+                    "bus": map_helper.get_distance(self.address, address["address"], "transit")
                }
                 self.commute_times.append({
                     "name": address["name"],
@@ -85,10 +82,11 @@ class EtuoviApt:
 
         #Monthly costs
         maint_cost = soup.find(string=re.compile("Hoitovastike"))
-        match = re.match(".*Hoitovastike (\d{0,7},\d{1,2}).*Rahoitusvastike (\d{0,7},\d{1,2})", maint_cost)
-        if match:
-            self.expense_maint = float(match.group(1).replace(",", "."))
-            self.expense_debt = float(match.group(2).replace(",", "."))
+        if maint_cost:
+            match = re.match(".*Hoitovastike (\d{0,7},\d{1,2}).*Rahoitusvastike (\d{0,7},\d{1,2})", maint_cost)
+            if match:
+                self.expense_maint = float(match.group(1).replace(",", "."))
+                self.expense_debt = float(match.group(2).replace(",", "."))
         
     def __str__(self):
         string = "\n***************************\n" + self.address + "\n"
@@ -160,32 +158,41 @@ class EtuoviApt:
             return False
         return False
 
+class MapHelper():
+    def __init__(self, maps):
+        self.maps = maps
+        
+    def get_coords(self, address):
+        """Converts an address to lat, lng dict"""
+        geocode = self.maps.geocode(address)[0]
+        return geocode["geometry"]["location"]
 
-def getDistance(origin, destination, mode="driving"):
-    time_of_travel = int(next_weekday(datetime.datetime.now(), 0, 8, 30).timestamp())
-    data = {"origins": origin,
+    def get_distance(self, origin, destination, mode="driving"):
+        time_of_travel = int(next_weekday(datetime.datetime.now(), 0, 8, 30).timestamp())
+        kwargs = {
+            "origins": origin,
             "departure_time": time_of_travel,
             "destinations": destination,
             "mode": mode,
             "language": "en-EN",
-            "key": _g_api_key
-           }
-    url = "https://maps.googleapis.com/maps/api/distancematrix/json?" + urlencode(data)
-    
-    try:
-        result = simplejson.load(urllib.request.urlopen(url))
-    except Exception as e:
-        print(url)
-        raise e
-    try:
-        travel_time = result['rows'][0]['elements'][0]['duration']['text']
-        friendly_distance = result['rows'][0]['elements'][0]['distance']['text']
-        distance = result['rows'][0]['elements'][0]['distance']['value']
-    except Exception as e:
-        print(result)
-        raise e
+        }
         
-    return friendly_distance, travel_time, distance
+        result = self.maps.distance_matrix(**kwargs)
+        log(pprint.pformat(result))
+        try:
+            if result["rows"][0]["elements"][0]['status'] == "OK":
+                travel_time = result['rows'][0]['elements'][0]['duration']['text']
+                friendly_distance = result['rows'][0]['elements'][0]['distance']['text']
+                distance = result['rows'][0]['elements'][0]['distance']['value']
+            else:
+                log("Warning: Google Maps was unable to calculate distance!")
+                return None, None, None
+        except KeyError as e:
+            log("Invalid response!", "ERROR")
+            log(pprint.pformat(result), "ERROR")
+            raise e
+            
+        return friendly_distance, travel_time, distance
 
 def next_weekday(d, weekday, hour, minute):
     """Returns the next weekday datetime at time_of_day"""
@@ -194,3 +201,10 @@ def next_weekday(d, weekday, hour, minute):
         days_ahead += 7
     date = d + datetime.timedelta(days_ahead)
     return datetime.datetime(date.year, date.month, date.day, hour, minute)
+
+
+with open("../personal.json", encoding='utf-8') as f:
+    data = json.load(f)
+    _g_addresses = data["addresses"]
+    maps = googlemaps.Client(key=data["google_api_key"])
+    map_helper = MapHelper(maps)

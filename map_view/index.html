@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <title>Google Maps API V3 lesson 1</title>
+    <style type="text/css">
+        html { height: 100% }
+        body { height: 100%; margin: 0; padding: 0 }
+        #map { height: 100% }
+    </style>
+    <script src="http://maps.googleapis.com/maps/api/js"></script>
+    <script type="text/javascript">
+        var map, geocoder, infowindow;
+            
+        function initialize() {
+
+            var arrDestinations = [
+                {
+                    lat: 50.815155, 
+                    lon: -0.137072, 
+                    title: "Brighton Pier", 
+                    description: "Brighton Palace Pier dates to 1899"
+                },
+                {
+                    lat: 50.822638, 
+                    lon: -0.137361, 
+                    title: "Brighton Pavilion", 
+                    description: "The Pavilion was built for the Prince of Wales in 1787"
+                },
+                {
+                    lat: 50.821226, 
+                    lon: -0.139372, 
+                    title: "English's", 
+                    description: "English's Seafood Restaurant and Oyster Bar"
+                }
+            ];
+
+            var myOptions = {
+                zoom: 10,
+                center: new google.maps.LatLng(50.820645,-0.137376),
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            };
+            
+            map = new google.maps.Map(document.getElementById("map"), myOptions);
+            
+            geocoder = new google.maps.Geocoder();
+            
+            var infowindow =  new google.maps.InfoWindow({
+                content: ''
+            });
+            // loop over our array
+            for (i = 0; i < arrDestinations.length; i++) {
+                // create a marker
+                var marker = new google.maps.Marker({
+                    title: arrDestinations[i].title,
+                    position: new google.maps.LatLng(arrDestinations[i].lat, arrDestinations[i].lon),
+                    map: map
+                });
+                
+                // add an event listener for this marker
+                bindInfoWindow(marker, map, infowindow, "<p>" + arrDestinations[i].description + "</p>");  
+            }
+        
+        }
+        function bindInfoWindow(marker, map, infowindow, html) { 
+            google.maps.event.addListener(marker, 'click', function() { 
+                infowindow.setContent(html); 
+                infowindow.open(map, marker); 
+            }); 
+        } 
+        
+
+        
+        
+        </script>
+        <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBR7549cMRuxeIS1d1sCG4_wpLGJj99CsA&callback=initialize">
+        </script>
+</head>
+<body>
+<h1>Hi!</h1>
+<div id="map"></div>
+</body>
+</html>
+
