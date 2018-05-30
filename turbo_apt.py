@@ -22,6 +22,11 @@ def log(msg, level="info"):
 class EtuoviApt:
     def __init__(self, url, json_file="turbo_apt.json"):
         self.url = url
+        try:
+            self.apt_id = int(url.rstrip("/").split("/")[-1].split("?")[0])
+        except ValueError as e:
+            log("Invalid URL: %s" % url)
+            raise e
         self.commute_times = []
         self._html = ""
         self._soup = None
@@ -71,7 +76,7 @@ class EtuoviApt:
 
         #Price
         self.price_selling = float(soup.find('dt', text="Myyntihinta:")\
-            .find_next_sibling().get_text().strip().replace("€", "").replace(" ", ""))
+            .find_next_sibling().get_text().strip().replace("€", "").replace(" ", "").replace(",", "."))
         try:
             self.price_debt = float(soup.find('dt', text="Velkaosuus:")
                 .find_next_sibling().get_text().strip().replace("€", "").replace(" ", "").replace(",", "."))
@@ -109,6 +114,17 @@ class EtuoviApt:
                 string += "%s: %s\n" %(key, value, )
         return string
 
+    def get_etuovi_info_str(self):
+
+        string = ""
+        for commute in self.commute_times:
+            trips = commute["trip_choices"]
+            string += "%s is %s (%s by car, %s by bus)" \
+                %(commute["name"], trips["car"][0],
+                  trips["car"][1], trips["bus"][1]) + "\n"
+        string += "Commute estimates are based on the next monday at 8.30\n"
+        return string
+
     def save(self, filepath):
         """Saves the object to JSON file."""
         
@@ -124,12 +140,12 @@ class EtuoviApt:
                     target.remove(obj)
                     log("Removed {}".format(obj["address"]))
             
-        tmp_dict = self.__dict__
+        tmp_dict = self.__dict__.copy()
         #Don't save private keys to file. soup is not serializeable.
-        for key in tmp_dict.keys():
+        for key in self.__dict__.keys():
             if key.startswith("_"):
-                tmp_dict[key] = None
-        
+                tmp_dict.pop(key)
+        tmp_dict["etuovi_additional_info"] = self.get_etuovi_info_str()
         target.append(tmp_dict)
 
         with open(filepath, "w") as fp:
@@ -147,8 +163,8 @@ class EtuoviApt:
             json_list = json.load(fp)
         try:
             for obj in json_list:
-                if "address" in obj and obj["url"] == self.url:
-                    log("Found match in file for %s" %(self.url))
+                if "address" in obj and obj["apt_id"] == self.apt_id:
+                    log("Found match in file for %s" %(self.apt_id))
                     for prop in self.__dict__.keys():
                         if not prop.startswith("_"):
                             setattr(self, prop, obj[prop])
@@ -161,7 +177,7 @@ class EtuoviApt:
 class MapHelper():
     def __init__(self, maps):
         self.maps = maps
-        
+
     def get_coords(self, address):
         """Converts an address to lat, lng dict"""
         geocode = self.maps.geocode(address)[0]
