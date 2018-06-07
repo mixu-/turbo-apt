@@ -21,6 +21,7 @@ def log(msg, level="info"):
 
 class EtuoviApt:
     def __init__(self, url, json_file="turbo_apt.json"):
+        self.filepath = json_file
         self.url = url
         try:
             self.apt_id = int(url.rstrip("/").split("/")[-1].split("?")[0])
@@ -38,7 +39,7 @@ class EtuoviApt:
         self.price_selling = 0
         self.expense_maint = 0
         self.expense_debt = 0
-        if self.load(json_file):
+        if os.path.exists(json_file) and self.load(json_file):
             #The URL was already found from file.
             log("Loaded %s" %(self.address))
         else:
@@ -125,10 +126,13 @@ class EtuoviApt:
         string += "Commute estimates are based on the next monday at 8.30\n"
         return string
 
-    def save(self, filepath):
+    def save(self, filepath=None):
         """Saves the object to JSON file."""
-        
+        if not filepath:
+            filepath = self.filepath
+        log("Saving to file...")
         target = []
+        apt_from_file = {}
         if os.path.exists(filepath):
             with open(filepath, "r") as fp:
                 target = json.load(fp)
@@ -137,26 +141,30 @@ class EtuoviApt:
                     raise Exception("Invalid JSON! List contained %s, expected only dict" %(type(obj), ))
                 if obj["address"] == self.address:
                     #Remove the existing entry, we'll add it back later.
+                    apt_from_file = obj.copy()
                     target.remove(obj)
                     log("Removed {}".format(obj["address"]))
             
-        tmp_dict = self.__dict__.copy()
+        #Merge dictionaries
+        tmp_dict = {**apt_from_file, **self.__dict__.copy()}
         #Don't save private keys to file. soup is not serializeable.
         for key in self.__dict__.keys():
             if key.startswith("_"):
                 tmp_dict.pop(key)
         tmp_dict["etuovi_additional_info"] = self.get_etuovi_info_str()
         target.append(tmp_dict)
-
+        #log(pprint.pformat(target))
         with open(filepath, "w") as fp:
             fp.write(json.dumps(target, indent=4, sort_keys=True))
 
-    def load(self, filepath):
+    def load(self, filepath=None):
         """Loads an object from JSON file.
         
         Returns:
             True for existing EtuoviApt objects. Else False."""
 
+        if not filepath:
+            filepath = self.filepath
         if not os.path.exists(filepath):
             return False
         with open(filepath, "r", encoding="utf-8") as fp:
@@ -194,7 +202,7 @@ class MapHelper():
         }
         
         result = self.maps.distance_matrix(**kwargs)
-        log(pprint.pformat(result))
+        #log(pprint.pformat(result))
         try:
             if result["rows"][0]["elements"][0]['status'] == "OK":
                 travel_time = result['rows'][0]['elements'][0]['duration']['text']
