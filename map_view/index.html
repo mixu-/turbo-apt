@@ -8,36 +8,51 @@
         body { height: 100%; margin: 0; padding: 0 }
         #map { height: 100% }
     </style>
-    <script src="http://maps.googleapis.com/maps/api/js"></script>
     <script type="text/javascript">
         var map, geocoder, infowindow;
-            
-        function initialize() {
+        
+        function get_data(){
+            url = "http://localhost:8000/get_data";
+            console.log("get_data()");
+            fetch(url)
+                .then(function(response) {
+                    if (!response.ok) {
+                        console.log("Not cool.");
+                        console.log(response);
+                        return new Error(response);
+                    }
+                    console.log("Got response");
+                    //console.log(response)
+                    return response.json();
+                })
+                .then(function(jsonResponse) {
+                    //console.log(jsonResponse);
+                    initialize(jsonResponse);
+                });
+        }
 
+        function initialize(allApts) {
+            console.log("initialize()");
+            console.log(allApts);
             var arrDestinations = [
-                {
-                    lat: 50.815155, 
-                    lon: -0.137072, 
-                    title: "Brighton Pier", 
-                    description: "Brighton Palace Pier dates to 1899"
-                },
-                {
-                    lat: 50.822638, 
-                    lon: -0.137361, 
-                    title: "Brighton Pavilion", 
-                    description: "The Pavilion was built for the Prince of Wales in 1787"
-                },
-                {
-                    lat: 50.821226, 
-                    lon: -0.139372, 
-                    title: "English's", 
-                    description: "English's Seafood Restaurant and Oyster Bar"
-                }
             ];
-
+            for (var i = 0; i < allApts.length; i++) {
+                if (allApts[i].hasOwnProperty("coords")) {
+                    var apt = allApts[i];
+                    var description = `Velaton hinta: ${apt["price_total"]}e<br/>
+                                       Fiilis: ${apt["fiilis"]}/5, Kunto: ${apt["kunto"]}/5`;
+                    var apt_pin = {
+                        lat: allApts[i]["coords"][0],
+                        lon: allApts[i]["coords"][1],
+                        title:  allApts[i]["address"],
+                        description:  description
+                    };
+                    arrDestinations.push(apt_pin);
+                }
+            }
             var myOptions = {
                 zoom: 10,
-                center: new google.maps.LatLng(50.820645,-0.137376),
+                center: new google.maps.LatLng(61.4978, 23.7610),
                 mapTypeId: google.maps.MapTypeId.ROADMAP
             };
             
@@ -74,11 +89,11 @@
         
         </script>
         <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBR7549cMRuxeIS1d1sCG4_wpLGJj99CsA&callback=initialize">
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBR7549cMRuxeIS1d1sCG4_wpLGJj99CsA&callback=get_data">
         </script>
 </head>
 <body>
-<h1>Hi!</h1>
+<h1>Hey, there's supposed to be a map below</h1>
 <div id="map"></div>
 </body>
 </html>
