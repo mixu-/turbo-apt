@@ -56,7 +56,7 @@ class TurboTestCase(unittest.TestCase):
         apt = EtuoviApt(_g_test_urls[0])
         value = "Some Value!"
         setattr(apt, "some_custom_property", value)
-        assert apt.some_custom_property == value, "Custom property not set"
+        assert apt.some_custom_property == value, "Custom property not set" #pylint: disable=E1101
         assert value in str(apt), "Custom property is not in object string representation."
         print(apt)
 

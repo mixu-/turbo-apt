@@ -24,7 +24,7 @@ class EtuoviApt:
         self.filepath = json_file
         self.url = url
         try:
-            self.apt_id = int(url.rstrip("/").split("/")[-1].split("?")[0])
+            self.apt_id = url.rstrip("/").split("/")[-1].split("?")[0]
         except ValueError as e:
             log("Invalid URL: %s" % url)
             raise e
@@ -39,6 +39,7 @@ class EtuoviApt:
         self.price_selling = 0
         self.expense_maint = 0
         self.expense_debt = 0
+        self.rejected = False
         if os.path.exists(json_file) and self.load(json_file):
             #The URL was already found from file.
             log("Loaded %s" %(self.address))
@@ -63,6 +64,14 @@ class EtuoviApt:
             self.save(json_file)
     
     def scrape(self):
+        def scrape_price(self, field_name):
+            try:
+                self.price_selling = float(soup.find('dt', text=field_name)\
+                    .find_next_sibling().get_text().strip().replace("€", "").replace(" ", "").replace(",", "."))
+                return True
+            except AttributeError:
+                log("%s not found" %field_name)
+            return False        
         #Address
         soup = self._soup
         map_container = soup.find('div', id="mapInfoWindowContent")
@@ -76,8 +85,12 @@ class EtuoviApt:
             self.floor = tuple(self.floor_raw.split("/"))
 
         #Price
-        self.price_selling = float(soup.find('dt', text="Myyntihinta:")\
-            .find_next_sibling().get_text().strip().replace("€", "").replace(" ", "").replace(",", "."))
+        if not scrape_price(self, "Myyntihinta:"):
+            if not scrape_price(self, "Velaton lähtöhinta:"):
+                if not scrape_price(self, "Viimeisin tarjous:"):
+                    log("Failed to find the price for this place.")
+                    self.price_selling = 0
+
         try:
             self.price_debt = float(soup.find('dt', text="Velkaosuus:")
                 .find_next_sibling().get_text().strip().replace("€", "").replace(" ", "").replace(",", "."))
@@ -89,7 +102,7 @@ class EtuoviApt:
         #Monthly costs
         maint_cost = soup.find(string=re.compile("Hoitovastike"))
         if maint_cost:
-            match = re.match(".*Hoitovastike (\d{0,7},\d{1,2}).*Rahoitusvastike (\d{0,7},\d{1,2})", maint_cost)
+            match = re.match(r".*Hoitovastike (\d{0,7},\d{1,2}).*Rahoitusvastike (\d{0,7},\d{1,2})", maint_cost)
             if match:
                 self.expense_maint = float(match.group(1).replace(",", "."))
                 self.expense_debt = float(match.group(2).replace(",", "."))
