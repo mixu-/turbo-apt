@@ -31,6 +31,42 @@
                 });
         }
 
+        function rgbToHex(rgb) {
+            var hex = Number(rgb).toString(16);
+            if (hex.length < 2) {
+                hex = "0" + hex;
+            }
+            return hex;
+        }
+        function colorGradient(fadeFraction, rgbColor1, rgbColor2, rgbColor3) { 
+            var color1 = rgbColor1;
+            var color2 = rgbColor2;
+            var fade = fadeFraction;
+
+            // Do we have 3 colors for the gradient? Need to adjust the params.
+            if (rgbColor3) {
+                fade = fade * 2;
+
+                // Find which interval to use and adjust the fade percentage
+                if (fade >= 1) {
+                    fade -= 1;
+                    color1 = rgbColor2;
+                    color2 = rgbColor3;
+                }
+            }
+
+            var diffRed = color2.red - color1.red;
+            var diffGreen = color2.green - color1.green;
+            var diffBlue = color2.blue - color1.blue;
+
+            var gradient = {
+                red: rgbToHex(parseInt(Math.floor(color1.red + (diffRed * fade)), 10)),
+                green: rgbToHex(parseInt(Math.floor(color1.green + (diffGreen * fade)), 10)),
+                blue: rgbToHex(parseInt(Math.floor(color1.blue + (diffBlue * fade)), 10)),
+            };
+            return '#' + gradient.red + gradient.green + gradient.blue;
+        }
+        
         function initialize(allApts) {
             console.log("initialize()");
             console.log(allApts);
@@ -39,14 +75,39 @@
             for (var i = 0; i < allApts.length; i++) {
                 if (allApts[i].hasOwnProperty("coords")) {
                     var apt = allApts[i];
-                    var description = `Velaton hinta: ${apt["price_total"]}e<br/>
-                                       Fiilis: ${apt["fiilis"]}/5, Kunto: ${apt["kunto"]}/5`;
+                    var sijainti = apt["sijainti"] || "*";
+                    var kunto = apt["kunto"] || "*";
+                    var hinta = apt["price_total"] || "*";
+                    var fiilis = apt["fiilis"] || "*";
+                    var hintalaatu = apt["hintalaatu"] || "*";
+                    var points = "N/A";
+                    try {
+                        var points = parseInt(sijainti) + parseInt(kunto) + parseInt(fiilis);
+                    } catch (e) {
+                        console.log("Unable to show points to price ratio. Ratings are missing.");
+                    }
+                    var description = `
+                                    <a href="${apt["url"]}">${apt["address"]}</a><br/>
+                                    Velaton hinta: ${hinta}e<br/>
+                                    Fiilis: ${fiilis}/5<br/>
+                                    Kunto: ${kunto}/5<br/>
+                                    Sijainti: ${sijainti}/5<br/>
+                                    Hinta/Laatu: ${hintalaatu}/5<br/>
+                                    Pisteet: ${points}/20`;
                     var apt_pin = {
                         lat: allApts[i]["coords"][0],
                         lon: allApts[i]["coords"][1],
                         title:  allApts[i]["address"],
-                        description:  description
+                        description:  description,
+                        apt: apt,
+                        points: points
                     };
+                    if (allApts[i].hasOwnProperty("rejected") && allApts[i]["rejected"].toString() == "true"){
+                        //Don't add this rejected apartment to the map.
+                        console.log("Skipping rejected apartment");
+                        console.log(allApts[i]);
+                        continue;
+                    }
                     arrDestinations.push(apt_pin);
                 }
             }
@@ -66,10 +127,25 @@
             // loop over our array
             for (i = 0; i < arrDestinations.length; i++) {
                 // create a marker
+                var color = "#999999";
+                var apt = arrDestinations[i];
+                if (apt.hasOwnProperty("points") && apt["points"] != "N/A"){
+                    var fraction = (apt["points"]-4) / 16.0;
+                    //console.log(fraction);
+                    color = colorGradient(fraction, {"red": 205, "green": 53, "blue": 53},
+                                                    {"red": 205, "green": 205, "blue": 53},
+                                                    {"red": 53, "green": 205, "blue": 53});
+                    //console.log(color);
+                }
                 var marker = new google.maps.Marker({
                     title: arrDestinations[i].title,
                     position: new google.maps.LatLng(arrDestinations[i].lat, arrDestinations[i].lon),
-                    map: map
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 7,
+                        strokeColor: color
+                    },
                 });
                 
                 // add an event listener for this marker
