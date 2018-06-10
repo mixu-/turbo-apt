@@ -40,7 +40,11 @@
         var rating = $("#" + zevent.target.id).data("number");
         params[field_name] = rating;
         send_data(params);
-        addStars(rating, field_name, null, null);
+        if (zevent.target.id.indexOf("toggle") > -1) {
+            addToggle(rating, field_name, null, null);
+        } else {
+            addStars(rating, field_name, null, null);
+        }
     };
 
     GM_addStyle(`.not_selected { font-color: gray; opacity: 0.4; filter: alpha(opacity=40); }`);
@@ -58,12 +62,26 @@
         } else { console.log("Updating stars for " + id); }
         $("#" + id).html("");
         for ( var i = 1; i<=max_stars; i++){
-            var star_class = "not_selected";
-            if (current_rating >= i) {star_class = 'selected'; }
-            var stars = '<img data-number="' + i + '" id="' + id + '_star_' + i + '" src="http://localhost:8000/star.png" class="' + star_class + '"/>';
+            var img_class = "not_selected";
+            if (current_rating >= i) {img_class = 'selected'; }
+            var stars = '<img data-number="' + i + '" id="' + id + '_star_' + i + '" src="http://localhost:8000/star.png" class="' + img_class + '"/>';
             $("#" + id).append(stars);
             $("#" + id + "_star_" + i).click(rate);
         }
+    }
+    var addToggle = function(toggle_state, id, title, location) {
+        var max_stars = 5;
+        if ($("#" + id).length == 0){
+            //location, title are only needed when creating a new set of stars.
+            $(location).append('<span id="container_' + id + '"><p><strong>' + title + '</strong></p><p id=' + id + '></p></span>');
+            console.log("Adding toggle for " + id);
+        } else { console.log("Updating toggle for " + id); }
+        $("#" + id).html("");
+        var img_class = "not_selected";
+        if (toggle_state == true) {img_class = 'selected'; }
+        var toggle = '<img data-number="' + (!toggle_state).toString() + '" id="' + id + '_toggle" src="http://localhost:8000/x-mark.png" class="' + img_class + '"/>';
+        $("#" + id).append(toggle);
+        $("#" + id + "_toggle").click(rate);
     }
 
     var show_data = function(info){
@@ -85,18 +103,30 @@
             if (!show_data(info)){
                 console.log("No data found yet for this apt. Adding...");
                 send_data({url: window.location.href});
+                setTimeout(function(){window.location.reload();}, 5000);
             } else {
                 console.log("Found apt info from the server already. Using that.");
+                var stars = 0;
+                var rejected = false;
+                if (info[0].hasOwnProperty("fiilis")) { stars = info[0]["fiilis"]; }
+                addStars(stars, "fiilis", "Yleisfiilis", ".ratings_header");
+                stars = 0;
+
+                if (info[0].hasOwnProperty("kunto")) { stars = info[0]["kunto"]; }
+                addStars(stars, "kunto", "Kunto", ".ratings_header");
+                stars = 0;
+
+                if (info[0].hasOwnProperty("sijainti")) { stars = info[0]["sijainti"]; }
+                addStars(stars, "sijainti", "Sijainti", ".ratings_header");
+
+                if (info[0].hasOwnProperty("hintalaatu")) { stars = info[0]["hintalaatu"]; }
+                addStars(stars, "hintalaatu", "Hinta-/Laatusuhde", ".ratings_header");
+
+                if (info[0].hasOwnProperty("rejected")) {
+                    rejected = (info[0]["rejected"] == "true");
+                }
+                addToggle(rejected, "rejected", "Hylätty", ".ratings_header");
             }
-            var stars = 0;
-            if (info[0].hasOwnProperty("fiilis")) { stars = info[0]["fiilis"]; }
-            addStars(stars, "fiilis", "Yleisfiilis", ".ratings_header");
-            stars = 0;
-            if (info[0].hasOwnProperty("kunto")) { stars = info[0]["kunto"]; }
-            addStars(stars, "kunto", "Kunto", ".ratings_header");
-            stars = 0;
-            if (info[0].hasOwnProperty("sijainti")) { stars = info[0]["sijainti"]; }
-            addStars(stars, "sijainti", "Sijainti", ".ratings_header");
         }
     });
 }
