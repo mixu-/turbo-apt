@@ -11,7 +11,6 @@
 
 (function() {
     'use strict';
-    //GM_addStyle('.not_selected { font-color: gray; }');
     var send_data = function(data_dict){
         console.log(data_dict);
         GM_xmlhttpRequest({
@@ -20,55 +19,57 @@
          });
     }
 
+    var GM_addStyle = function(css) {
+        const style = document.getElementById("GM_addStyleBy8626") || (function() {
+            const style = document.createElement('style');
+            style.type = 'text/css';
+            style.id = "GM_addStyleBy8626";
+            document.head.appendChild(style);
+            return style;
+        })();
+        const sheet = style.sheet;
+        sheet.insertRule(css, (sheet.rules || sheet.cssRules || []).length);
+    }
+
+
     var rate = function(zevent) {
-        console.log(zevent.target.parent);
+        //console.log(zevent);
+        //console.log(zevent.target.id);
         var params = {url: window.location.href};
-        if (zevent.target.id.indexOf("bad") > -1) {
-            params["rating"] = "bad";
-            send_data(params);
-        }
-        if (zevent.target.id.indexOf("good") > -1) {
-            params["rating"] = "good";
-            send_data();
-        }
-        if (zevent.target.id.indexOf("great") > -1) {
-            params["rating"] = "great";
-            send_data(params);
-        }
-        if (zevent.target.id.indexOf("renovations") > -1) {
-            params["renovations"] = zevent.target.id;
-            send_data(params);
-        }
+        var field_name = zevent.target.parentElement.id;
+        var rating = $("#" + zevent.target.id).data("number");
+        params[field_name] = rating;
+        send_data(params);
+        addStars(rating, field_name, null, null);
     };
-    $(".description").prepend ( `
-    <div id="turbo_apt_info">
-    </div>
-    <div id="rating">
-        <p><strong>Yleisfiilis</strong></p>
-        <p id="bad" class="not_selected">Huono</p>
-        <p id="good" class="not_selected">Hyvä</p>
-        <p id="great" class="not_selected">Mahtava</p>
-    </div>` );
 
-    $("#bad").click(rate);
-    $("#good").click(rate);
-    $("#great").click(rate);
-    $(".project").prepend ( `
-    <div id="renovations">
-        <p><strong>Tulevat remontit</strong></p>
-        <p id="big_renovations" class="not_selected">Iso yhtiöremontti</p>
-        <p id="small_renovations" class="not_selected">Pieni yhtiöremontti</p>
-        <p id="no_renovations" class="not_selected">Ei remontteja</p>
-    </div>` );
-    $("#big_renovations").click(rate);
-    $("#small_renovations").click(rate);
-    $("#no_renovations").click(rate);
+    GM_addStyle(`.not_selected { font-color: gray; opacity: 0.4; filter: alpha(opacity=40); }`);
+    GM_addStyle(`.ratings_header { display: inline-block; text-align: center; position: fixed; bottom: 0; width: 100%; padding: 5px 20%; background: #555; color: #f1f1f1; z-index: 100; font-size: 16px;}`);
+    GM_addStyle(`.ratings_header span {float: left; margin: 0.2em 1em;}`);
+    GM_addStyle(`.ratings_header span p {font-size: 13px; text-align: left;}`);
+    $("body").append('<div class=ratings_header></div>');
 
-    var show_data = function(data){
-        var info = JSON.parse(data);
+    var addStars = function(current_rating, id, title, location) {
+        var max_stars = 5;
+        if ($("#" + id).length == 0){
+            //location, title are only needed when creating a new set of stars.
+            $(location).append('<span id="container_' + id + '"><p><strong>' + title + '</strong></p><p id=' + id + '></p></span>');
+            console.log("Adding stars for " + id);
+        } else { console.log("Updating stars for " + id); }
+        $("#" + id).html("");
+        for ( var i = 1; i<=max_stars; i++){
+            var star_class = "not_selected";
+            if (current_rating >= i) {star_class = 'selected'; }
+            var stars = '<img data-number="' + i + '" id="' + id + '_star_' + i + '" src="http://localhost:8000/star.png" class="' + star_class + '"/>';
+            $("#" + id).append(stars);
+            $("#" + id + "_star_" + i).click(rate);
+        }
+    }
+
+    var show_data = function(info){
         if (info.length > 0 && info[0].hasOwnProperty("etuovi_additional_info")){
             console.log(info[0]);
-            $("#turbo_apt_info").html("<p>" + info[0]["etuovi_additional_info"].replace(/(?:\r\n|\r|\n)/g, '<br/>') + "</p>");
+            $(".ratings_header").append("<span><p>" + info[0]["etuovi_additional_info"].replace(/(?:\r\n|\r|\n)/g, '<br/>') + "</p></span>");
             return true;
         }
         return false;
@@ -80,12 +81,22 @@
         method: 'GET',
         url: url,
         onload: function(response) {
-            if (!show_data(response.responseText)){
+            var info = JSON.parse(response.responseText);
+            if (!show_data(info)){
                 console.log("No data found yet for this apt. Adding...");
                 send_data({url: window.location.href});
             } else {
                 console.log("Found apt info from the server already. Using that.");
             }
+            var stars = 0;
+            if (info[0].hasOwnProperty("fiilis")) { stars = info[0]["fiilis"]; }
+            addStars(stars, "fiilis", "Yleisfiilis", ".ratings_header");
+            stars = 0;
+            if (info[0].hasOwnProperty("kunto")) { stars = info[0]["kunto"]; }
+            addStars(stars, "kunto", "Kunto", ".ratings_header");
+            stars = 0;
+            if (info[0].hasOwnProperty("sijainti")) { stars = info[0]["sijainti"]; }
+            addStars(stars, "sijainti", "Sijainti", ".ratings_header");
         }
     });
 }
