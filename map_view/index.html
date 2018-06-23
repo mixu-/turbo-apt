@@ -82,7 +82,7 @@
                     var hintalaatu = apt["hintalaatu"] || "*";
                     var points = "N/A";
                     try {
-                        var points = parseInt(sijainti) + parseInt(kunto) + parseInt(fiilis);
+                        var points = parseInt(sijainti) + parseInt(kunto) + parseInt(fiilis) + parseInt(hintalaatu);
                     } catch (e) {
                         console.log("Unable to show points to price ratio. Ratings are missing.");
                     }
